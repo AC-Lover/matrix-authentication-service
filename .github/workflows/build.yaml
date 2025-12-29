@@ -27,8 +27,7 @@ env:
   CARGO_NET_GIT_FETCH_WITH_CLI: "true"
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
-  IMAGE: ghcr.io/${{ github.repository }}
-  BUILDCACHE: ghcr.io/${{ github.repository }}/buildcache
+
   DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
 
 jobs:
@@ -224,6 +223,12 @@ jobs:
       SOURCE_DATE_EPOCH: ${{ needs.compute-version.outputs.timestamp }}
 
     steps:
+      - name: Prepare environment
+        run: |
+          IMAGE_NAME=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/$IMAGE_NAME" >> $GITHUB_ENV
+          echo "BUILDCACHE=ghcr.io/$IMAGE_NAME/buildcache" >> $GITHUB_ENV
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5.10.0
@@ -319,6 +324,12 @@ jobs:
       - assemble-archives
       - build-image
     steps:
+      - name: Prepare environment
+        run: |
+          IMAGE_NAME=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/$IMAGE_NAME" >> $GITHUB_ENV
+          echo "BUILDCACHE=ghcr.io/$IMAGE_NAME/buildcache" >> $GITHUB_ENV
+
       - name: Download the artifacts from the previous job
         uses: actions/download-artifact@v7
         with:
@@ -375,6 +386,12 @@ jobs:
       contents: write
 
     steps:
+      - name: Prepare environment
+        run: |
+          IMAGE_NAME=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/$IMAGE_NAME" >> $GITHUB_ENV
+          echo "BUILDCACHE=ghcr.io/$IMAGE_NAME/buildcache" >> $GITHUB_ENV
+
       - name: Checkout the code
         uses: actions/checkout@v6
         with:
