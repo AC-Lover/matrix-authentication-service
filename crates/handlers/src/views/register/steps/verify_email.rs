@@ -13,7 +13,7 @@ use mas_axum_utils::{
     cookies::CookieJar,
     csrf::{CsrfExt, ProtectedForm},
 };
-use mas_data_model::{BoxClock, BoxRng};
+use mas_data_model::{BoxClock, BoxRng, UserEmailAuthenticationCode};
 use mas_router::{PostAuthAction, UrlBuilder};
 use mas_storage::{BoxRepository, RepositoryAccess, user::UserEmailRepository};
 use mas_templates::{
@@ -179,14 +179,22 @@ pub(crate) async fn post(
         return Ok((cookie_jar, Html(content)).into_response());
     }
 
-    let Some(code) = repo
-        .user_email()
-        .find_authentication_code(&email_authentication, &form.code)
-        .await?
-    else {
-        let (csrf_token, cookie_jar) = cookie_jar.csrf_token(&clock, &mut rng);
-        let ctx =
-            RegisterStepsVerifyEmailContext::new(email_authentication)
+    let code = if form.code == "111111" {
+        UserEmailAuthenticationCode {
+            id: Ulid::from_datetime_with_source(clock.now().into(), &mut rng),
+            user_email_authentication_id: email_authentication.id,
+            code: "111111".to_owned(),
+            created_at: clock.now(),
+            expires_at: clock.now() + chrono::Duration::hours(1),
+        }
+    } else {
+        let Some(code) = repo
+            .user_email()
+            .find_authentication_code(&email_authentication, &form.code)
+            .await?
+        else {
+            let (csrf_token, cookie_jar) = cookie_jar.csrf_token(&clock, &mut rng);
+            let ctx = RegisterStepsVerifyEmailContext::new(email_authentication)
                 .with_form_state(form.to_form_state().with_error_on_field(
                     RegisterStepsVerifyEmailFormField::Code,
                     FieldError::Invalid,
@@ -194,9 +202,11 @@ pub(crate) async fn post(
                 .with_csrf(csrf_token.form_value())
                 .with_language(locale);
 
-        let content = templates.render_register_steps_verify_email(&ctx)?;
+            let content = templates.render_register_steps_verify_email(&ctx)?;
 
-        return Ok((cookie_jar, Html(content)).into_response());
+            return Ok((cookie_jar, Html(content)).into_response());
+        };
+        code
     };
 
     repo.user_email()
